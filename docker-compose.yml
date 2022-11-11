@@ -1,0 +1,19 @@
+x-hdd-image: &hdd-image hdd/hadoop-base
+x-hdd-volumes: &hdd-volumes
+  - ./config/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml
+
+version: "3.7"
+services:
+  namenode:
+    env_file:
+      - env/hdd-hdfs.env
+    image: *hdd-image
+    hostname: namenode
+    container_name: namenode
+    volumes: *hdd-volumes
+    ports:
+      - "9870:9870"
+    command:
+      - "sh"
+      - "/run-server.sh"
+      - "nn"
