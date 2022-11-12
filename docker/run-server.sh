@@ -7,7 +7,7 @@ nn)
   sh /start-namenode.sh
   ;;
 dn)
-  echo "启动DataNode"
+  sh /start-datanode.sh
   ;;
 2nn)
   echo "启动Secondary NameNode"

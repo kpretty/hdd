@@ -17,3 +17,42 @@ services:
       - "sh"
       - "/run-server.sh"
       - "nn"
+  datanode-1:
+    env_file:
+      - env/hdd-hdfs.env
+    image: *hdd-image
+    hostname: datanode-1
+    container_name: datanode-1
+    volumes: *hdd-volumes
+    depends_on:
+      - namenode
+    command:
+      - "sh"
+      - "/run-server.sh"
+      - "dn"
+  datanode-2:
+    env_file:
+      - env/hdd-hdfs.env
+    image: *hdd-image
+    hostname: datanode-2
+    container_name: datanode-2
+    volumes: *hdd-volumes
+    depends_on:
+      - namenode
+    command:
+      - "sh"
+      - "/run-server.sh"
+      - "dn"
+  datanode-3:
+    env_file:
+      - env/hdd-hdfs.env
+    image: *hdd-image
+    hostname: datanode-3
+    container_name: datanode-3
+    volumes: *hdd-volumes
+    depends_on:
+      - namenode
+    command:
+      - "sh"
+      - "/run-server.sh"
+      - "dn"
