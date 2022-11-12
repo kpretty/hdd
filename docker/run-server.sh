@@ -14,6 +14,7 @@ dn)
   ;;
 rm)
   echo "启动ResourceManager"
+  sh /start-resoucemanager.sh
   ;;
 nm)
   echo "启动NodeManager"

@@ -3,7 +3,7 @@ FROM openjdk:8
 MAINTAINER wjun
 MAINTAINER wjunjobs@outlook.com
 
-ARG version=3.3.4
+ARG version=2.7.4
 
 RUN apt update \
     && apt install -y openssh-server \
@@ -17,6 +17,7 @@ COPY hadoop-${version}.tar.gz hadoop-${version}.tar.gz
 COPY run-server.sh /run-server.sh
 COPY start-namenode.sh /start-namenode.sh
 COPY init-server.sh /init-server.sh
+COPY start-resourcemanager.sh /start-resourcemanager.sh
 
 RUN tar -zxf hadoop-${version}.tar.gz \
     && mv hadoop-${version} hadoop

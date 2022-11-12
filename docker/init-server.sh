@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # 启动ssh服务
 service ssh start
 # 将JAVA_HOME写入hadoop-env.sh中
