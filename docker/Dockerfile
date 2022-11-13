@@ -17,6 +17,7 @@ COPY hadoop-${version}.tar.gz hadoop-${version}.tar.gz
 COPY run-server.sh /run-server.sh
 COPY start-namenode.sh /start-namenode.sh
 COPY init-server.sh /init-server.sh
+COPY start-datanode.sh /start-datanode.sh
 
 RUN tar -zxf hadoop-${version}.tar.gz \
     && mv hadoop-${version} hadoop
