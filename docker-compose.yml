@@ -1,6 +1,10 @@
 x-hdd-image: &hdd-image hdd/hadoop-base
 x-hdd-volumes: &hdd-volumes
+  - ./config/capacity-scheduler.xml:/opt/hadoop/etc/hadoop/capacity-scheduler.xml
   - ./config/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml
+  - ./config/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml
+  - ./config/mapred-site.xml:/opt/hadoop/etc/hadoop/mapred-site.xml
+  - ./config/yarn-site.xml:/opt/hadoop/etc/hadoop/yarn-site.xml
 
 version: "3.7"
 services:
@@ -56,3 +60,67 @@ services:
       - "sh"
       - "/run-server.sh"
       - "dn"
+  secondarynamenode:
+    env_file:
+      - env/hdd-hdfs.env
+    image: *hdd-image
+    hostname: secondarynamenode
+    container_name: secondarynamenode
+    volumes: *hdd-volumes
+    command:
+      - "sh"
+      - "/run-server.sh"
+      - "2nn"
+  resourcemanager:
+    env_file:
+      - env/hdd-yarn.env
+    image: *hdd-image
+    hostname: resourcemanager
+    container_name: resourcemanager
+    volumes: *hdd-volumes
+    ports:
+      - "8088:8088"
+    command:
+      - "sh"
+      - "/run-server.sh"
+      - "rm"
+  nodemanager-1:
+    env_file:
+      - env/hdd-yarn.env
+    image: *hdd-image
+    hostname: nodemanager-1
+    container_name: nodemanager-1
+    volumes: *hdd-volumes
+    depends_on:
+      - resourcemanager
+    command:
+      - "sh"
+      - "/run-server.sh"
+      - "nm"
+  nodemanager-2:
+    env_file:
+      - env/hdd-yarn.env
+    image: *hdd-image
+    hostname: nodemanager-2
+    container_name: nodemanager-2
+    volumes: *hdd-volumes
+    depends_on:
+      - resourcemanager
+    command:
+      - "sh"
+      - "/run-server.sh"
+      - "nm"
+  historyserver:
+    env_file:
+      - env/hdd-yarn.env
+      - env/hdd-hdfs.env
+    image: *hdd-image
+    hostname: historyserver
+    container_name: historyserver
+    volumes: *hdd-volumes
+    ports:
+      - "19888:19888"
+    command:
+      - "sh"
+      - "/run-server.sh"
+      - "jh"

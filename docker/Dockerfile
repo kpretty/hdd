@@ -18,9 +18,14 @@ COPY run-server.sh /run-server.sh
 COPY start-namenode.sh /start-namenode.sh
 COPY init-server.sh /init-server.sh
 COPY start-datanode.sh /start-datanode.sh
+COPY start-jobhistory.sh /start-jobhistory.sh
+COPY start-nodemanager.sh /start-nodemanager.sh
+COPY start-resourcemanager.sh /start-resourcemanager.sh
+COPY start-secondarynamenode.sh /start-secondarynamenode.sh
 
 RUN tar -zxf hadoop-${version}.tar.gz \
-    && mv hadoop-${version} hadoop
+    && mv hadoop-${version} hadoop \
+    && rm -rf hadoop-${version}.tar.gz
 
 CMD ["sh","/run-server.sh"]
 

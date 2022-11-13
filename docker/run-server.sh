@@ -10,16 +10,16 @@ dn)
   sh /start-datanode.sh
   ;;
 2nn)
-  echo "启动Secondary NameNode"
+  sh /start-secondarynamenode.sh
   ;;
 rm)
-  echo "启动ResourceManager"
+  sh /start-resourcemanager.sh
   ;;
 nm)
-  echo "启动NodeManager"
+  sh /start-nodemanager.sh
   ;;
 jh)
-  echo "启动JobHistory"
+  sh /start-jobhistory.sh
   ;;
 *)
   echo "ERROR：未知参数"
