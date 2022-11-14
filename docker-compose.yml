@@ -20,18 +20,16 @@ services:
       - "sh"
       - "/run-server.sh"
       - "nn"
-  rm_node:
+  resourcemanager:
     env_file:
       - env/hdd-yarn.env
     image: *hdd-image
-    hostname: rm_node
-    container_name: rm_node
+    hostname: resourcemanager
+    container_name: resourcemanager
     volumes: *hdd-volumes
     ports:
       - "8088:8088"
-    depends_on:
-      - namenode
-      command:
-        - "sh"
-        - "/run-server.sh"
-        - "rm"
+    command:
+      - "sh"
+      - "/run-server.sh"
+      - "rm"
