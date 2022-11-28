@@ -26,7 +26,7 @@ fn main() {
         "start" => {}
         "stop" => {}
         "remove" | "rm" => {}
-        "version" => {}
+        "version" => println!("{} by {}", env!("CARGO_PKG_VERSION"), env!("CARGO_PKG_LICENSE")),
         "help" => {
             print_start();
         }
