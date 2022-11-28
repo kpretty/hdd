@@ -1,33 +1,36 @@
-extern crate serde_yaml;
-extern crate serde;
+mod entity;
+mod helper;
 
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::Write;
-use serde::{Serialize, Deserialize};
-
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Server {
-    version: String,
-    services: HashMap<String, InnerServer>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct InnerServer {
-    env_file: Vec<String>,
-    image: String,
-    hostname: String,
-    container_name: String,
-    volumes: Vec<String>,
-    // ports: Vec<String>,
-    command: Vec<String>,
-}
+use std::env;
+use helper::*;
 
 fn main() {
-    let yaml_str = include_str!("../docker-compose.yml");
-    let result: Server = serde_yaml::from_str(yaml_str).unwrap();
-    println!("{:#?}", result);
-    let result1 = serde_yaml::to_string(&result).unwrap();
-    File::create("test.yml").unwrap().write(&result1.as_bytes()).unwrap();
+    // 获取命令行参数
+    let mut args: Vec<String> = env::args().collect();
+    // ./hdd init dev -nn 1 -dn 3 -rm 1 -nm 3 -2nn 1 -jh 1
+    // ["./hdd", "init", "dev", "-nn", "1", "-dn", "3", "-rm", "1", "-nm", "3", "-2nn", "1", "-jh", "1"]
+    // 第一个参数为脚本名 不要
+    args.remove(0);
+    if args.len() <= 0 {
+        print_common();
+        return;
+    }
+    // ["init", "dev", "-nn", "1", "-dn", "3", "-rm", "1", "-nm", "3", "-2nn", "1", "-jh", "1"]
+    // 获取 action
+    let action: String = args.remove(0);
+    match action.trim() {
+        "init" => {}
+        "list" | "ls" => {}
+        "start" => {}
+        "stop" => {}
+        "remove" | "rm" => {}
+        "version" => {}
+        "help" => {
+            print_start();
+        }
+        _ => {
+            println!("未知操作 {}", action);
+            print_common();
+        }
+    }
 }
