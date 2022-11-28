@@ -1,8 +1,10 @@
 mod entity;
 mod helper;
+mod cmd;
 
 use std::env;
 use helper::*;
+use crate::cmd::init;
 
 fn main() {
     // 获取命令行参数
@@ -19,7 +21,7 @@ fn main() {
     // 获取 action
     let action: String = args.remove(0);
     match action.trim() {
-        "init" => {}
+        "init" => init(args),
         "list" | "ls" => {}
         "start" => {}
         "stop" => {}
