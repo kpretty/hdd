@@ -3,7 +3,10 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process;
+use std::{env, io, process};
+use std::ffi::OsString;
+use std::fs::read_dir;
+use std::io::ErrorKind;
 use crate::helper::print_red;
 
 // 直接接管传入参数的所有权
@@ -43,7 +46,7 @@ fn stack_exist(stack: &String) -> PathBuf {
         std::fs::create_dir_all(&stack_path).unwrap();
         // 拷贝文件夹
         for dir in vec!["init", "env"] {
-            let src = Path::new(env!("CARGO_MANIFEST_DIR")).join(Path::new("src")).join(Path::new(dir));
+            let src = get_project_root().unwrap().join(Path::new(dir));
             let dest = stack_path.join(Path::new(dir));
             copy_dir(&src, &dest)
         }
@@ -51,12 +54,28 @@ fn stack_exist(stack: &String) -> PathBuf {
     stack_path
 }
 
+pub fn get_project_root() -> io::Result<PathBuf> {
+    let path = env::current_dir()?;
+    let mut path_ancestors = path.as_path().ancestors();
+
+    while let Some(p) = path_ancestors.next() {
+        let has_cargo =
+            read_dir(p)?
+                .into_iter()
+                .any(|p| p.unwrap().file_name() == OsString::from("Cargo.lock"));
+        if has_cargo {
+            return Ok(PathBuf::from(p));
+        }
+    }
+    Err(io::Error::new(ErrorKind::NotFound, "Ran out of places to find Cargo.toml"))
+}
+
 // 封装递归拷贝文件逻辑
 fn copy_dir(src: &PathBuf, dest: &PathBuf) {
     // 创建必要的文件夹
     std::fs::create_dir_all(&dest).unwrap();
     // 递归复制文件
-    for entry in src.read_dir().unwrap() {
+    for entry in src.read_dir().expect(format!("目录或文件不存在:{:?}", src).trim()) {
         let entry = entry.unwrap().path();
         if entry.is_file() {
             println!("拷贝依赖文件：{:?} -> {:?}", &entry, &dest);
