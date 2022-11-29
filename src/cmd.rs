@@ -13,7 +13,7 @@ pub fn init(mut args: Vec<String>) {
     let stack = args.remove(0);
     // 修改：应该先校验参数，参数没问题再去创建相对应的文件夹
     // step-1 校验参数
-    let args = check_args(args);
+    let _args = check_args(args);
     // step-2 检查stack是否存在
     stack_exist(&stack);
     // todo:step-3 生成docker-compose文件
@@ -41,6 +41,19 @@ fn stack_exist(stack: &String) {
         // 不存在则创建
         println!("创建stack：{}，本地路径：{:?}", stack, stack_path);
         std::fs::create_dir_all(&stack_path).unwrap();
+        // 同时创建必要的文件夹
+        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join(Path::new("src")).join(Path::new("init"));
+        let dest = stack_path.join(Path::new("init"));
+        // 创建必要的文件夹
+        std::fs::create_dir_all(&dest).unwrap();
+        // 递归复制文件
+        for entry in src.read_dir().unwrap() {
+            let entry = entry.unwrap().path();
+            if entry.is_file() {
+                println!("{:?}->{:?}", &entry, &dest);
+                std::fs::copy(&entry, &dest.join(&entry.file_name().unwrap())).unwrap();
+            }
+        }
     }
 }
 
@@ -81,7 +94,7 @@ fn check_args(args: Vec<String>) -> HashMap<String, u32> {
         (!param.contains_key("-rm") && *param.get("-rm").unwrap() > 1) ||
         (!param.contains_key("-jh") && *param.get("-jh").unwrap() > 1) ||
         (!param.contains_key("-2nn") && *param.get("-2nn").unwrap() > 1) {
-        print_red("当前版本暂不支持HA，请确保namenode|resourcemanager|jobhistory|secondarynamenode ".to_string());
+        print_red("当前版本暂不支持HA，请确保namenode|resourcemanager|jobhistory|secondarynamenode个数为1".to_string());
         process::exit(1);
     }
     // ...
