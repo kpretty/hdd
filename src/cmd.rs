@@ -3,7 +3,10 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process;
+use std::{env, io, process};
+use std::ffi::OsString;
+use std::fs::read_dir;
+use std::io::ErrorKind;
 use crate::helper::print_red;
 
 // 直接接管传入参数的所有权
@@ -13,10 +16,11 @@ pub fn init(mut args: Vec<String>) {
     let stack = args.remove(0);
     // 修改：应该先校验参数，参数没问题再去创建相对应的文件夹
     // step-1 校验参数
-    let _args = check_args(args);
+    let args = check_args(args);
     // step-2 检查stack是否存在
     let stack_path = stack_exist(&stack);
-    // todo:step-3 生成docker-compose文件
+    // step-3 生成docker-compose文件
+    build_compose(stack_path, args)
 }
 
 #[allow(deprecated)]
@@ -24,7 +28,7 @@ pub fn init(mut args: Vec<String>) {
 /// 1. 检查项目空间是否已创建 $HOME/.hdd，不存在则创建
 /// 2. 检查stack是否已创建，存在停止运行(stack重名)，不存在创建
 fn stack_exist(stack: &String) -> PathBuf {
-    let path = std::env::home_dir().unwrap().join(Path::new(".hdd"));
+    let path = env::home_dir().unwrap().join(Path::new(".hdd"));
     // 校验项目根目录是否存在
     if !path.exists() {
         // notice: create_dir_all 会产生所有权的移交，注意使用借用
@@ -43,7 +47,7 @@ fn stack_exist(stack: &String) -> PathBuf {
         std::fs::create_dir_all(&stack_path).unwrap();
         // 拷贝文件夹
         for dir in vec!["init", "env"] {
-            let src = Path::new(env!("CARGO_MANIFEST_DIR")).join(Path::new("src")).join(Path::new(dir));
+            let src = get_project_root().unwrap().join(Path::new(dir));
             let dest = stack_path.join(Path::new(dir));
             copy_dir(&src, &dest)
         }
@@ -51,12 +55,28 @@ fn stack_exist(stack: &String) -> PathBuf {
     stack_path
 }
 
+pub fn get_project_root() -> io::Result<PathBuf> {
+    let path = env::current_dir()?;
+    let mut path_ancestors = path.as_path().ancestors();
+
+    while let Some(p) = path_ancestors.next() {
+        let has_cargo =
+            read_dir(p)?
+                .into_iter()
+                .any(|p| p.unwrap().file_name() == OsString::from("Cargo.lock"));
+        if has_cargo {
+            return Ok(PathBuf::from(p));
+        }
+    }
+    Err(io::Error::new(ErrorKind::NotFound, "Ran out of places to find Cargo.toml"))
+}
+
 // 封装递归拷贝文件逻辑
 fn copy_dir(src: &PathBuf, dest: &PathBuf) {
     // 创建必要的文件夹
     std::fs::create_dir_all(&dest).unwrap();
     // 递归复制文件
-    for entry in src.read_dir().unwrap() {
+    for entry in src.read_dir().expect(format!("目录或文件不存在:{:?}", src).trim()) {
         let entry = entry.unwrap().path();
         if entry.is_file() {
             println!("拷贝依赖文件：{:?} -> {:?}", &entry, &dest);
@@ -210,5 +230,9 @@ fn build_compose(stack: PathBuf, param: HashMap<String, u32>) {
             services.insert("namenode".to_string(), nn);
         }
     }
+    let _server = Server {
+        version: "3.0".to_string(),
+        services,
+    };
 }
 // <-----------------------------------------------
