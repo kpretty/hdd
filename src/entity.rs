@@ -5,18 +5,18 @@ use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Server {
-    version: String,
-    services: HashMap<String, InnerServer>,
+pub struct Server {
+    pub version: String,
+    pub services: HashMap<String, InnerServer>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct InnerServer {
-    env_file: Vec<String>,
-    image: String,
-    hostname: String,
-    container_name: String,
-    volumes: Vec<String>,
-    ports: Vec<String>,
-    command: Vec<String>,
+pub struct InnerServer {
+    pub env_file: Vec<String>,
+    pub image: String,
+    pub hostname: String,
+    pub container_name: String,
+    pub volumes: Vec<String>,
+    pub ports: Vec<String>,
+    pub command: Vec<String>,
 }

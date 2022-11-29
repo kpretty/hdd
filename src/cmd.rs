@@ -2,7 +2,7 @@
 // init
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process;
 use crate::helper::print_red;
 
@@ -15,7 +15,7 @@ pub fn init(mut args: Vec<String>) {
     // step-1 校验参数
     let _args = check_args(args);
     // step-2 检查stack是否存在
-    stack_exist(&stack);
+    let stack_path = stack_exist(&stack);
     // todo:step-3 生成docker-compose文件
 }
 
@@ -23,7 +23,7 @@ pub fn init(mut args: Vec<String>) {
 /// 检查 $HOME/.hdd/{stack} 是否存在
 /// 1. 检查项目空间是否已创建 $HOME/.hdd，不存在则创建
 /// 2. 检查stack是否已创建，存在停止运行(stack重名)，不存在创建
-fn stack_exist(stack: &String) {
+fn stack_exist(stack: &String) -> PathBuf {
     let path = std::env::home_dir().unwrap().join(Path::new(".hdd"));
     // 校验项目根目录是否存在
     if !path.exists() {
@@ -41,18 +41,26 @@ fn stack_exist(stack: &String) {
         // 不存在则创建
         println!("创建stack：{}，本地路径：{:?}", stack, stack_path);
         std::fs::create_dir_all(&stack_path).unwrap();
-        // 同时创建必要的文件夹
-        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join(Path::new("src")).join(Path::new("init"));
-        let dest = stack_path.join(Path::new("init"));
-        // 创建必要的文件夹
-        std::fs::create_dir_all(&dest).unwrap();
-        // 递归复制文件
-        for entry in src.read_dir().unwrap() {
-            let entry = entry.unwrap().path();
-            if entry.is_file() {
-                println!("{:?}->{:?}", &entry, &dest);
-                std::fs::copy(&entry, &dest.join(&entry.file_name().unwrap())).unwrap();
-            }
+        // 拷贝文件夹
+        for dir in vec!["init", "env"] {
+            let src = Path::new(env!("CARGO_MANIFEST_DIR")).join(Path::new("src")).join(Path::new(dir));
+            let dest = stack_path.join(Path::new(dir));
+            copy_dir(&src, &dest)
+        }
+    }
+    stack_path
+}
+
+// 封装递归拷贝文件逻辑
+fn copy_dir(src: &PathBuf, dest: &PathBuf) {
+    // 创建必要的文件夹
+    std::fs::create_dir_all(&dest).unwrap();
+    // 递归复制文件
+    for entry in src.read_dir().unwrap() {
+        let entry = entry.unwrap().path();
+        if entry.is_file() {
+            println!("拷贝依赖文件：{:?} -> {:?}", &entry, &dest);
+            std::fs::copy(&entry, &dest.join(&entry.file_name().unwrap())).unwrap();
         }
     }
 }
@@ -99,5 +107,108 @@ fn check_args(args: Vec<String>) -> HashMap<String, u32> {
     }
     // ...
     param
+}
+
+fn build_compose(stack: PathBuf, param: HashMap<String, u32>) {
+    use crate::entity::{Server, InnerServer};
+    let mut services: HashMap<String, InnerServer> = HashMap::new();
+    // namenode
+    match param.get("-nn") {
+        None => {}
+        Some(_) => {
+            let nn = InnerServer {
+                env_file: vec![],
+                image: "hdd/hadoop-base".to_string(),
+                hostname: "namenode".to_string(),
+                container_name: "namenode".to_string(),
+                volumes: vec!["9870:9870".to_string()],
+                ports: vec!["9870:9870".to_string()],
+                command: vec!["sh".to_string(), "/run-server.sh".to_string(), "nn".to_string()],
+            };
+            services.insert("namenode".to_string(), nn);
+        }
+    }
+    // datanode
+    match param.get("-dn") {
+        None => {}
+        Some(value) => {
+            for i in 0..*value {
+                let nn = InnerServer {
+                    env_file: vec![],
+                    image: "".to_string(),
+                    hostname: "".to_string(),
+                    container_name: "".to_string(),
+                    volumes: vec![],
+                    ports: vec![],
+                    command: vec![],
+                };
+                services.insert(format!("{}-{}", "namenode", i).to_string(), nn);
+            }
+        }
+    }
+    // secondarynamenode
+    match param.get("-2nn") {
+        None => {}
+        Some(_) => {
+            let nn = InnerServer {
+                env_file: vec![],
+                image: "".to_string(),
+                hostname: "".to_string(),
+                container_name: "".to_string(),
+                volumes: vec![],
+                ports: vec![],
+                command: vec![],
+            };
+            services.insert("namenode".to_string(), nn);
+        }
+    }
+    // resourcemanager
+    match param.get("-rm") {
+        None => {}
+        Some(_) => {
+            let nn = InnerServer {
+                env_file: vec![],
+                image: "".to_string(),
+                hostname: "".to_string(),
+                container_name: "".to_string(),
+                volumes: vec![],
+                ports: vec![],
+                command: vec![],
+            };
+            services.insert("namenode".to_string(), nn);
+        }
+    }
+    // nodemanager
+    match param.get("-nm") {
+        None => {}
+        Some(_) => {
+            let nn = InnerServer {
+                env_file: vec![],
+                image: "".to_string(),
+                hostname: "".to_string(),
+                container_name: "".to_string(),
+                volumes: vec![],
+                ports: vec![],
+                command: vec![],
+            };
+            services.insert("namenode".to_string(), nn);
+        }
+    }
+    // jobhistory
+    match param.get("-jh") {
+        None => {}
+        Some(_) => {
+            let nn = InnerServer {
+                env_file: vec![],
+                image: "".to_string(),
+                hostname: "".to_string(),
+                container_name: "".to_string(),
+                volumes: vec![],
+                ports: vec![],
+                command: vec![],
+            };
+            services.insert("namenode".to_string(), nn);
+        }
+    }
 }
 // <-----------------------------------------------
