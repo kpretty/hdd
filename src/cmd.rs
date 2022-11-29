@@ -16,10 +16,11 @@ pub fn init(mut args: Vec<String>) {
     let stack = args.remove(0);
     // 修改：应该先校验参数，参数没问题再去创建相对应的文件夹
     // step-1 校验参数
-    let _args = check_args(args);
+    let args = check_args(args);
     // step-2 检查stack是否存在
     let stack_path = stack_exist(&stack);
-    // todo:step-3 生成docker-compose文件
+    // step-3 生成docker-compose文件
+    build_compose(stack_path, args)
 }
 
 #[allow(deprecated)]
@@ -27,7 +28,7 @@ pub fn init(mut args: Vec<String>) {
 /// 1. 检查项目空间是否已创建 $HOME/.hdd，不存在则创建
 /// 2. 检查stack是否已创建，存在停止运行(stack重名)，不存在创建
 fn stack_exist(stack: &String) -> PathBuf {
-    let path = std::env::home_dir().unwrap().join(Path::new(".hdd"));
+    let path = env::home_dir().unwrap().join(Path::new(".hdd"));
     // 校验项目根目录是否存在
     if !path.exists() {
         // notice: create_dir_all 会产生所有权的移交，注意使用借用
@@ -229,5 +230,9 @@ fn build_compose(stack: PathBuf, param: HashMap<String, u32>) {
             services.insert("namenode".to_string(), nn);
         }
     }
+    let _server = Server {
+        version: "3.0".to_string(),
+        services,
+    };
 }
 // <-----------------------------------------------
