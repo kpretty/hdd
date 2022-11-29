@@ -25,22 +25,22 @@ fn print_color(color_type: &Color, message: &str) {
 }
 
 #[allow(dead_code)]
-fn print_red(message: &String) {
+pub(crate) fn print_red(message: String) {
     print!("{}{}{}", RED, message, REST)
 }
 
 #[allow(dead_code)]
-fn print_green(message: &String) {
+fn print_green(message: String) {
     print!("{}{}{}", GREEN, message, REST)
 }
 
 #[allow(dead_code)]
-fn print_yellow(message: &String) {
+fn print_yellow(message: String) {
     print!("{}{}{}", YELLOW, message, REST)
 }
 
 #[allow(dead_code)]
-fn print_blue(message: &String) {
+fn print_blue(message: String) {
     print!("{}{}{}", BLUE, message, REST)
 }
 // <-----------------------------------------------
@@ -66,9 +66,9 @@ pub fn print_logo() {
                                     "      /:/  /     \\:\\/:/  /     \\:\\/:/  /\n",
                                     "     /:/  /       \\::/__/       \\::/__/\n",
                                     "     \\/__/         ~~            ~~\n");
-    print_red(&logo_up);
-    print_yellow(&logo_mid);
-    print_green(&logo_down);
+    print_red(logo_up);
+    print_yellow(logo_mid);
+    print_green(logo_down);
 }
 
 pub fn print_desc() {
