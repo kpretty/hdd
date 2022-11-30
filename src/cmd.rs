@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::{env, io, process};
 use std::ffi::OsString;
-use std::fs::read_dir;
-use std::io::ErrorKind;
+use std::fs::{File, read_dir};
+use std::io::{ErrorKind, Write};
 use crate::helper::print_red;
 
 // 直接接管传入参数的所有权
@@ -20,7 +20,7 @@ pub fn init(mut args: Vec<String>) {
     // step-2 检查stack是否存在
     let stack_path = stack_exist(&stack);
     // step-3 生成docker-compose文件
-    build_compose(stack_path, args)
+    build_compose(&stack_path, args)
 }
 
 #[allow(deprecated)]
@@ -129,21 +129,40 @@ fn check_args(args: Vec<String>) -> HashMap<String, u32> {
     param
 }
 
-fn build_compose(stack: PathBuf, param: HashMap<String, u32>) {
+fn build_compose(stack: &PathBuf, param: HashMap<String, u32>) {
     use crate::entity::{Server, InnerServer};
+    // 固定参数
+    let image = "hdd/hadoop-base".to_string();
+    let volume_path = stack.join(Path::new("init"));
+    let volumes = vec![
+        format!("{}:{}", volume_path.join("core-site.xml").into_os_string().into_string().unwrap(), "/opt/hadoop/etc/hadoop/core-site.xml"),
+        format!("{}:{}", volume_path.join("hdfs-site.xml").into_os_string().into_string().unwrap(), "/opt/hadoop/etc/hadoop/hdfs-site.xml"),
+        format!("{}:{}", volume_path.join("yarn-site.xml").into_os_string().into_string().unwrap(), "/opt/hadoop/etc/hadoop/yarn-site.xml"),
+        format!("{}:{}", volume_path.join("mapred-site.xml").into_os_string().into_string().unwrap(), "/opt/hadoop/etc/hadoop/mapred-site.xml"),
+        format!("{}:{}", volume_path.join("capacity-scheduler.xml").into_os_string().into_string().unwrap(), "/opt/hadoop/etc/hadoop/capacity-scheduler.xml"),
+    ];
+    let env_path = stack.join("env");
+    let env_hdfs = vec![env_path.join("hdd-hdfs.env").into_os_string().into_string().unwrap()];
+    let env_yarn = vec![env_path.join("hdd-yarn.env").into_os_string().into_string().unwrap()];
+    let mut env_file = env_hdfs.to_owned();
+    env_file.append(&mut env_yarn.to_owned());
+    let base_command = vec!["sh".to_string(), "/run-server.sh".to_string()];
+    // end
     let mut services: HashMap<String, InnerServer> = HashMap::new();
     // namenode
     match param.get("-nn") {
         None => {}
         Some(_) => {
+            let mut command = base_command.to_owned();
+            command.push("nn".to_string());
             let nn = InnerServer {
-                env_file: vec![],
-                image: "hdd/hadoop-base".to_string(),
+                env_file: env_hdfs.to_owned(),
+                image: image.to_owned(),
                 hostname: "namenode".to_string(),
                 container_name: "namenode".to_string(),
-                volumes: vec!["9870:9870".to_string()],
+                volumes: volumes.to_owned(),
                 ports: vec!["9870:9870".to_string()],
-                command: vec!["sh".to_string(), "/run-server.sh".to_string(), "nn".to_string()],
+                command,
             };
             services.insert("namenode".to_string(), nn);
         }
@@ -152,17 +171,20 @@ fn build_compose(stack: PathBuf, param: HashMap<String, u32>) {
     match param.get("-dn") {
         None => {}
         Some(value) => {
+            let mut command = base_command.to_owned();
+            command.push("dn".to_string());
             for i in 0..*value {
-                let nn = InnerServer {
-                    env_file: vec![],
-                    image: "".to_string(),
-                    hostname: "".to_string(),
-                    container_name: "".to_string(),
-                    volumes: vec![],
+                let name = format!("{}-{}", "datanode", i).to_string();
+                let dn = InnerServer {
+                    env_file: env_hdfs.to_owned(),
+                    image: image.to_owned(),
+                    hostname: name.to_owned(),
+                    container_name: name.to_owned(),
+                    volumes: volumes.to_owned(),
                     ports: vec![],
-                    command: vec![],
+                    command: command.to_owned(),
                 };
-                services.insert(format!("{}-{}", "namenode", i).to_string(), nn);
+                services.insert(name, dn);
             }
         }
     }
@@ -170,69 +192,83 @@ fn build_compose(stack: PathBuf, param: HashMap<String, u32>) {
     match param.get("-2nn") {
         None => {}
         Some(_) => {
-            let nn = InnerServer {
-                env_file: vec![],
-                image: "".to_string(),
-                hostname: "".to_string(),
-                container_name: "".to_string(),
-                volumes: vec![],
+            let mut command = base_command.to_owned();
+            command.push("2nn".to_string());
+            let snn = InnerServer {
+                env_file: env_file.to_owned(),
+                image: image.to_owned(),
+                hostname: "secondarynamenode".to_string(),
+                container_name: "secondarynamenode".to_string(),
+                volumes: volumes.to_owned(),
                 ports: vec![],
-                command: vec![],
+                command,
             };
-            services.insert("namenode".to_string(), nn);
+            services.insert("secondarynamenode".to_string(), snn);
         }
     }
     // resourcemanager
     match param.get("-rm") {
         None => {}
         Some(_) => {
-            let nn = InnerServer {
-                env_file: vec![],
-                image: "".to_string(),
-                hostname: "".to_string(),
-                container_name: "".to_string(),
-                volumes: vec![],
-                ports: vec![],
-                command: vec![],
+            let mut command = base_command.to_owned();
+            command.push("rm".to_string());
+            let rm = InnerServer {
+                env_file: env_yarn.to_owned(),
+                image: image.to_owned(),
+                hostname: "resourcemanager".to_string(),
+                container_name: "resourcemanager".to_string(),
+                volumes: volumes.to_owned(),
+                ports: vec!["8088:8088".to_string()],
+                command,
             };
-            services.insert("namenode".to_string(), nn);
+            services.insert("resourcemanager".to_string(), rm);
         }
     }
     // nodemanager
     match param.get("-nm") {
         None => {}
-        Some(_) => {
-            let nn = InnerServer {
-                env_file: vec![],
-                image: "".to_string(),
-                hostname: "".to_string(),
-                container_name: "".to_string(),
-                volumes: vec![],
-                ports: vec![],
-                command: vec![],
-            };
-            services.insert("namenode".to_string(), nn);
+        Some(value) => {
+            let mut command = base_command.to_owned();
+            command.push("nm".to_string());
+            for i in 0..*value {
+                let name = format!("{}-{}", "nodemanager", i).to_string();
+                let nm = InnerServer {
+                    env_file: env_yarn.to_owned(),
+                    image: image.to_owned(),
+                    hostname: name.to_owned(),
+                    container_name: name.to_owned(),
+                    volumes: volumes.to_owned(),
+                    ports: vec![],
+                    command: command.to_owned(),
+                };
+                services.insert(name.to_owned(), nm);
+            }
         }
     }
     // jobhistory
     match param.get("-jh") {
         None => {}
         Some(_) => {
-            let nn = InnerServer {
-                env_file: vec![],
-                image: "".to_string(),
-                hostname: "".to_string(),
-                container_name: "".to_string(),
-                volumes: vec![],
+            let mut command = base_command.to_owned();
+            command.push("jh".to_string());
+            let jh = InnerServer {
+                env_file: env_file.to_owned(),
+                image: image.to_owned(),
+                hostname: "jobhistory".to_string(),
+                container_name: "jobhistory".to_string(),
+                volumes: volumes.to_owned(),
                 ports: vec![],
-                command: vec![],
+                command,
             };
-            services.insert("namenode".to_string(), nn);
+            services.insert("jobhistory".to_string(), jh);
         }
     }
-    let _server = Server {
+    let server = Server {
         version: "3.0".to_string(),
         services,
     };
+    let result = serde_yaml::to_string(&server).unwrap();
+    let mut file = File::create(stack.join("docker-compose.yml")).unwrap();
+    file.write_all((&result).as_ref()).unwrap();
 }
 // <-----------------------------------------------
