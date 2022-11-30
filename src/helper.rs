@@ -35,7 +35,7 @@ fn print_green(message: String) {
 }
 
 #[allow(dead_code)]
-fn print_yellow(message: String) {
+pub(crate) fn print_yellow(message: String) {
     print!("{}{}{}", YELLOW, message, REST)
 }
 

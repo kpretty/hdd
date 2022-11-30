@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::{env, io, process};
 use std::ffi::OsString;
-use std::fs::{File, read_dir};
+use std::fs::{File, read_dir, remove_dir_all};
 use std::io::{ErrorKind, Write};
-use crate::helper::print_red;
+use std::process::{Command, Output};
+use crate::helper::{print_red, print_yellow};
 
 // ----------------------------------------------->
 // init
@@ -66,12 +67,11 @@ fn check_args(args: Vec<String>) -> HashMap<String, u32> {
     param
 }
 
-#[allow(deprecated)]
 /// 检查 $HOME/.hdd/{stack} 是否存在
 /// 1. 检查项目空间是否已创建 $HOME/.hdd，不存在则创建
 /// 2. 检查stack是否已创建，存在停止运行(stack重名)，不存在创建
 fn stack_exist(stack: &String) -> PathBuf {
-    let path = env::home_dir().unwrap().join(Path::new(".hdd"));
+    let path = get_hdd_path();
     // 校验项目根目录是否存在
     if !path.exists() {
         // notice: create_dir_all 会产生所有权的移交，注意使用借用
@@ -272,4 +272,91 @@ fn copy_dir(src: &PathBuf, dest: &PathBuf) {
         }
     }
 }
+
+// 封装获取项目空间路径
+#[allow(deprecated)]
+fn get_hdd_path() -> PathBuf {
+    env::home_dir().unwrap().join(Path::new(".hdd"))
+}
+
 // <-----------------------------------------------
+
+// ----------------------------------------------->
+// start
+pub fn start(args: Vec<String>) {
+    // 校验参数
+    let stack = check_args_for_stack(args);
+    let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
+    let output = Command::new("docker-compose")
+        .args(["-f", &stack_file_path[..], "up", "-d"])
+        .output()
+        .unwrap();
+    handle_output(output);
+}
+
+// <-----------------------------------------------
+// start
+pub fn status(args: Vec<String>) {
+    // 校验参数
+    let stack = check_args_for_stack(args);
+    let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
+    let output = Command::new("docker-compose")
+        .args(["-f", &stack_file_path[..], "ps"])
+        .output()
+        .unwrap();
+    handle_output(output);
+}
+// <-----------------------------------------------
+
+// ----------------------------------------------->
+// stop
+pub fn stop(args: Vec<String>) {
+    // 校验参数
+    let stack = check_args_for_stack(args);
+    let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
+    println!("正在执行，请耐心等待哟~~~");
+    let output = Command::new("docker-compose")
+        .args(["-f", &stack_file_path[..], "stop"])
+        .output()
+        .unwrap();
+    handle_output(output);
+}
+// <-----------------------------------------------
+
+// ----------------------------------------------->
+// rm/remove
+pub fn remove(args: Vec<String>) {
+    // 校验参数
+    let stack = check_args_for_stack(args);
+    let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
+    let output = Command::new("docker-compose")
+        .args(["-f", &stack_file_path[..], "down"])
+        .output()
+        .unwrap();
+    handle_output(output);
+    // 删除stack
+    remove_dir_all(stack).unwrap();
+}
+// <-----------------------------------------------
+
+fn check_args_for_stack(args: Vec<String>) -> PathBuf {
+    if args.is_empty() {
+        print_red("缺少stack参数，hdd start <stack_name>".to_string());
+        process::exit(1);
+    }
+    if args.len() > 1 {
+        print_yellow("警告：仅第一个参数生效".to_string());
+    }
+    get_hdd_path().join(args[0].to_owned())
+}
+
+// 封装命令行参数输出
+fn handle_output(output: Output) {
+    if output.status.success() {
+        let result = String::from_utf8(output.stdout).unwrap();
+        println!("执行完成...\n{}", result);
+    } else {
+        let result = String::from_utf8(output.stderr).unwrap();
+        print_red(result);
+    }
+}
