@@ -106,7 +106,7 @@ fn stack_exist(stack: &String) -> PathBuf {
 fn build_compose(stack: &PathBuf, param: HashMap<String, u32>) {
     use crate::entity::{Server, InnerServer};
     // 固定参数
-    let image = "hdd/hadoop-base".to_string();
+    let image = "kpretty/hadoop".to_string();
     let volume_path = stack.join(Path::new("init"));
     let volumes = vec![
         format!("{}:{}", volume_path.join("core-site.xml").into_os_string().into_string().unwrap(), "/opt/hadoop/etc/hadoop/core-site.xml"),

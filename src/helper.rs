@@ -92,7 +92,7 @@ pub fn print_start() {
       remove      移除stack\n \
       start       启动stack\n \
       stop        停止stack\n \
-      status      查看stack状态 \
+      status      查看stack状态\n \
       version     打印版本信息\n";
     println!("{}", hdd_start);
 }
