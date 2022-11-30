@@ -339,6 +339,17 @@ pub fn remove(args: Vec<String>) {
 }
 // <-----------------------------------------------
 
+// ----------------------------------------------->
+// list
+pub fn list() {
+    let project_path = get_hdd_path();
+    println!("stack:");
+    for dir in std::fs::read_dir(project_path).unwrap() {
+        println!("  {}", dir.unwrap().file_name().into_string().unwrap());
+    }
+}
+// <-----------------------------------------------
+
 fn check_args_for_stack(args: Vec<String>) -> PathBuf {
     if args.is_empty() {
         print_red("缺少stack参数，hdd start <stack_name>".to_string());
