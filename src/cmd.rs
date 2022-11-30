@@ -344,7 +344,7 @@ pub fn remove(args: Vec<String>) {
 pub fn list() {
     let project_path = get_hdd_path();
     println!("stack:");
-    for dir in std::fs::read_dir(project_path).unwrap() {
+    for dir in read_dir(project_path).unwrap() {
         println!("  {}", dir.unwrap().file_name().into_string().unwrap());
     }
 }
