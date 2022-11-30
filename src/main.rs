@@ -4,7 +4,7 @@ mod cmd;
 
 use std::env;
 use helper::*;
-use crate::cmd::{init, remove, start, status, stop};
+use crate::cmd::{init, list, remove, start, status, stop};
 
 fn main() {
     // 获取命令行参数
@@ -22,7 +22,7 @@ fn main() {
     let action: String = args.remove(0);
     match action.trim() {
         "init" => init(args),
-        "list" | "ls" => {}
+        "list" | "ls" => list(),
         "start" => start(args),
         "status" => status(args),
         "stop" => stop(args),
