@@ -90,7 +90,11 @@ fn stack_exist(stack: &String) -> PathBuf {
         std::fs::create_dir_all(&stack_path).unwrap();
         // 拷贝文件夹
         for dir in vec!["init", "env"] {
-            let src = get_project_root().unwrap().join(Path::new(dir));
+            // let src = get_project_root().unwrap().join(Path::new(dir));
+            let src = match get_project_root() {
+                Ok(path) => path.join(Path::new(dir)),
+                Err(_) => Path::new(dir).to_path_buf(),
+            };
             let dest = stack_path.join(Path::new(dir));
             copy_dir(&src, &dest)
         }
@@ -328,14 +332,18 @@ pub fn stop(args: Vec<String>) {
 pub fn remove(args: Vec<String>) {
     // 校验参数
     let stack = check_args_for_stack(args);
-    let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
-    let output = Command::new("docker-compose")
-        .args(["-f", &stack_file_path[..], "down"])
-        .output()
-        .unwrap();
-    handle_output(output);
-    // 删除stack
-    remove_dir_all(stack).unwrap();
+    match stack.join("docker-compose.yml").into_os_string().into_string() {
+        Ok(stack_file_path) => {
+            let output = Command::new("docker-compose")
+                .args(["-f", &stack_file_path[..], "down"])
+                .output()
+                .unwrap();
+            handle_output(output);
+            // 删除stack
+            remove_dir_all(stack).unwrap();
+        }
+        Err(_) => {}
+    }
 }
 // <-----------------------------------------------
 
@@ -358,7 +366,15 @@ fn check_args_for_stack(args: Vec<String>) -> PathBuf {
     if args.len() > 1 {
         print_yellow("警告：仅第一个参数生效".to_string());
     }
-    get_hdd_path().join(args[0].to_owned())
+    // 需要校验一下stack是否存在
+    let result = get_hdd_path().join(args[0].to_owned());
+    match result.exists() {
+        true => result,
+        false => {
+            print_red(format!("stack {} 不存在", args[0]));
+            process::exit(1);
+        }
+    }
 }
 
 // 封装命令行参数输出
