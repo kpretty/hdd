@@ -35,7 +35,7 @@ fn print_green(message: String) {
 }
 
 #[allow(dead_code)]
-fn print_yellow(message: String) {
+pub(crate) fn print_yellow(message: String) {
     print!("{}{}{}", YELLOW, message, REST)
 }
 
@@ -92,6 +92,7 @@ pub fn print_start() {
       remove      移除stack\n \
       start       启动stack\n \
       stop        停止stack\n \
+      status      查看stack状态 \
       version     打印版本信息\n";
     println!("{}", hdd_start);
 }

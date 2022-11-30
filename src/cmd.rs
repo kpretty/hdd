@@ -1,14 +1,14 @@
-// ----------------------------------------------->
-// init
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::{env, io, process};
 use std::ffi::OsString;
-use std::fs::{File, read_dir};
+use std::fs::{File, read_dir, remove_dir_all};
 use std::io::{ErrorKind, Write};
-use crate::helper::print_red;
+use std::process::{Command, Output};
+use crate::helper::{print_red, print_yellow};
 
+// ----------------------------------------------->
+// init
 // 直接接管传入参数的所有权
 // note:接不接管所有权都一样
 pub fn init(mut args: Vec<String>) {
@@ -21,68 +21,6 @@ pub fn init(mut args: Vec<String>) {
     let stack_path = stack_exist(&stack);
     // step-3 生成docker-compose文件
     build_compose(&stack_path, args)
-}
-
-#[allow(deprecated)]
-/// 检查 $HOME/.hdd/{stack} 是否存在
-/// 1. 检查项目空间是否已创建 $HOME/.hdd，不存在则创建
-/// 2. 检查stack是否已创建，存在停止运行(stack重名)，不存在创建
-fn stack_exist(stack: &String) -> PathBuf {
-    let path = env::home_dir().unwrap().join(Path::new(".hdd"));
-    // 校验项目根目录是否存在
-    if !path.exists() {
-        // notice: create_dir_all 会产生所有权的移交，注意使用借用
-        println!("初始化项目空间:{:?}", path);
-        std::fs::create_dir_all(&path).unwrap();
-    }
-    // 拼接stack路径
-    let stack_path = path.join(Path::new(stack));
-    if stack_path.exists() {
-        // 文件夹存在，则无法执行init操作，停止程序
-        println!("stack:{}已经存在", stack);
-        process::exit(1);
-    } else {
-        // 不存在则创建
-        println!("创建stack：{}，本地路径：{:?}", stack, stack_path);
-        std::fs::create_dir_all(&stack_path).unwrap();
-        // 拷贝文件夹
-        for dir in vec!["init", "env"] {
-            let src = get_project_root().unwrap().join(Path::new(dir));
-            let dest = stack_path.join(Path::new(dir));
-            copy_dir(&src, &dest)
-        }
-    }
-    stack_path
-}
-
-pub fn get_project_root() -> io::Result<PathBuf> {
-    let path = env::current_dir()?;
-    let mut path_ancestors = path.as_path().ancestors();
-
-    while let Some(p) = path_ancestors.next() {
-        let has_cargo =
-            read_dir(p)?
-                .into_iter()
-                .any(|p| p.unwrap().file_name() == OsString::from("Cargo.lock"));
-        if has_cargo {
-            return Ok(PathBuf::from(p));
-        }
-    }
-    Err(io::Error::new(ErrorKind::NotFound, "Ran out of places to find Cargo.toml"))
-}
-
-// 封装递归拷贝文件逻辑
-fn copy_dir(src: &PathBuf, dest: &PathBuf) {
-    // 创建必要的文件夹
-    std::fs::create_dir_all(&dest).unwrap();
-    // 递归复制文件
-    for entry in src.read_dir().expect(format!("目录或文件不存在:{:?}", src).trim()) {
-        let entry = entry.unwrap().path();
-        if entry.is_file() {
-            println!("拷贝依赖文件：{:?} -> {:?}", &entry, &dest);
-            std::fs::copy(&entry, &dest.join(&entry.file_name().unwrap())).unwrap();
-        }
-    }
 }
 
 /// 校验参数
@@ -129,6 +67,38 @@ fn check_args(args: Vec<String>) -> HashMap<String, u32> {
     param
 }
 
+/// 检查 $HOME/.hdd/{stack} 是否存在
+/// 1. 检查项目空间是否已创建 $HOME/.hdd，不存在则创建
+/// 2. 检查stack是否已创建，存在停止运行(stack重名)，不存在创建
+fn stack_exist(stack: &String) -> PathBuf {
+    let path = get_hdd_path();
+    // 校验项目根目录是否存在
+    if !path.exists() {
+        // notice: create_dir_all 会产生所有权的移交，注意使用借用
+        println!("初始化项目空间:{:?}", path);
+        std::fs::create_dir_all(&path).unwrap();
+    }
+    // 拼接stack路径
+    let stack_path = path.join(Path::new(stack));
+    if stack_path.exists() {
+        // 文件夹存在，则无法执行init操作，停止程序
+        println!("stack:{}已经存在", stack);
+        process::exit(1);
+    } else {
+        // 不存在则创建
+        println!("创建stack：{}，本地路径：{:?}", stack, stack_path);
+        std::fs::create_dir_all(&stack_path).unwrap();
+        // 拷贝文件夹
+        for dir in vec!["init", "env"] {
+            let src = get_project_root().unwrap().join(Path::new(dir));
+            let dest = stack_path.join(Path::new(dir));
+            copy_dir(&src, &dest)
+        }
+    }
+    stack_path
+}
+
+// 构建docker-compose文件
 fn build_compose(stack: &PathBuf, param: HashMap<String, u32>) {
     use crate::entity::{Server, InnerServer};
     // 固定参数
@@ -271,4 +241,122 @@ fn build_compose(stack: &PathBuf, param: HashMap<String, u32>) {
     let mut file = File::create(stack.join("docker-compose.yml")).unwrap();
     file.write_all((&result).as_ref()).unwrap();
 }
+
+// 获取项目路径
+fn get_project_root() -> io::Result<PathBuf> {
+    let path = env::current_dir()?;
+    let mut path_ancestors = path.as_path().ancestors();
+
+    while let Some(p) = path_ancestors.next() {
+        let has_cargo =
+            read_dir(p)?
+                .into_iter()
+                .any(|p| p.unwrap().file_name() == OsString::from("Cargo.lock"));
+        if has_cargo {
+            return Ok(PathBuf::from(p));
+        }
+    }
+    Err(io::Error::new(ErrorKind::NotFound, "Ran out of places to find Cargo.toml"))
+}
+
+// 封装递归拷贝文件逻辑
+fn copy_dir(src: &PathBuf, dest: &PathBuf) {
+    // 创建必要的文件夹
+    std::fs::create_dir_all(&dest).unwrap();
+    // 递归复制文件
+    for entry in src.read_dir().expect(format!("目录或文件不存在:{:?}", src).trim()) {
+        let entry = entry.unwrap().path();
+        if entry.is_file() {
+            println!("拷贝依赖文件：{:?} -> {:?}", &entry, &dest);
+            std::fs::copy(&entry, &dest.join(&entry.file_name().unwrap())).unwrap();
+        }
+    }
+}
+
+// 封装获取项目空间路径
+#[allow(deprecated)]
+fn get_hdd_path() -> PathBuf {
+    env::home_dir().unwrap().join(Path::new(".hdd"))
+}
+
 // <-----------------------------------------------
+
+// ----------------------------------------------->
+// start
+pub fn start(args: Vec<String>) {
+    // 校验参数
+    let stack = check_args_for_stack(args);
+    let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
+    let output = Command::new("docker-compose")
+        .args(["-f", &stack_file_path[..], "up", "-d"])
+        .output()
+        .unwrap();
+    handle_output(output);
+}
+
+// <-----------------------------------------------
+// start
+pub fn status(args: Vec<String>) {
+    // 校验参数
+    let stack = check_args_for_stack(args);
+    let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
+    let output = Command::new("docker-compose")
+        .args(["-f", &stack_file_path[..], "ps"])
+        .output()
+        .unwrap();
+    handle_output(output);
+}
+// <-----------------------------------------------
+
+// ----------------------------------------------->
+// stop
+pub fn stop(args: Vec<String>) {
+    // 校验参数
+    let stack = check_args_for_stack(args);
+    let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
+    println!("正在执行，请耐心等待哟~~~");
+    let output = Command::new("docker-compose")
+        .args(["-f", &stack_file_path[..], "stop"])
+        .output()
+        .unwrap();
+    handle_output(output);
+}
+// <-----------------------------------------------
+
+// ----------------------------------------------->
+// rm/remove
+pub fn remove(args: Vec<String>) {
+    // 校验参数
+    let stack = check_args_for_stack(args);
+    let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
+    let output = Command::new("docker-compose")
+        .args(["-f", &stack_file_path[..], "down"])
+        .output()
+        .unwrap();
+    handle_output(output);
+    // 删除stack
+    remove_dir_all(stack).unwrap();
+}
+// <-----------------------------------------------
+
+fn check_args_for_stack(args: Vec<String>) -> PathBuf {
+    if args.is_empty() {
+        print_red("缺少stack参数，hdd start <stack_name>".to_string());
+        process::exit(1);
+    }
+    if args.len() > 1 {
+        print_yellow("警告：仅第一个参数生效".to_string());
+    }
+    get_hdd_path().join(args[0].to_owned())
+}
+
+// 封装命令行参数输出
+fn handle_output(output: Output) {
+    if output.status.success() {
+        let result = String::from_utf8(output.stdout).unwrap();
+        println!("执行完成...\n{}", result);
+    } else {
+        let result = String::from_utf8(output.stderr).unwrap();
+        print_red(result);
+    }
+}
