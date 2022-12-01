@@ -3,8 +3,9 @@ use std::path::{Path, PathBuf};
 use std::{env, io, process};
 use std::ffi::OsString;
 use std::fs::{File, read_dir, remove_dir_all};
-use std::io::{ErrorKind, Write};
+use std::io::{ErrorKind, Read, Write};
 use std::process::{Command, Output};
+use crate::entity::{InnerServer, Server};
 use crate::helper::{print_red, print_yellow};
 
 // ----------------------------------------------->
@@ -104,7 +105,6 @@ fn stack_exist(stack: &String) -> PathBuf {
 
 // 构建docker-compose文件
 fn build_compose(stack: &PathBuf, param: HashMap<String, u32>) {
-    use crate::entity::{Server, InnerServer};
     // 固定参数
     let image = "kpretty/hadoop".to_string();
     let volume_path = stack.join(Path::new("init"));
@@ -289,7 +289,7 @@ fn get_hdd_path() -> PathBuf {
 // start
 pub fn start(args: Vec<String>) {
     // 校验参数
-    let stack = check_args_for_stack(args);
+    let stack = check_args_for_stack(&args);
     let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
     let output = Command::new("docker-compose")
         .args(["-f", &stack_file_path[..], "up", "-d"])
@@ -302,7 +302,7 @@ pub fn start(args: Vec<String>) {
 // start
 pub fn status(args: Vec<String>) {
     // 校验参数
-    let stack = check_args_for_stack(args);
+    let stack = check_args_for_stack(&args);
     let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
     let output = Command::new("docker-compose")
         .args(["-f", &stack_file_path[..], "ps"])
@@ -316,7 +316,7 @@ pub fn status(args: Vec<String>) {
 // stop
 pub fn stop(args: Vec<String>) {
     // 校验参数
-    let stack = check_args_for_stack(args);
+    let stack = check_args_for_stack(&args);
     let stack_file_path = stack.join("docker-compose.yml").into_os_string().into_string().unwrap();
     println!("正在执行，请耐心等待哟~~~");
     let output = Command::new("docker-compose")
@@ -331,7 +331,7 @@ pub fn stop(args: Vec<String>) {
 // rm/remove
 pub fn remove(args: Vec<String>) {
     // 校验参数
-    let stack = check_args_for_stack(args);
+    let stack = check_args_for_stack(&args);
     match stack.join("docker-compose.yml").into_os_string().into_string() {
         Ok(stack_file_path) => {
             let output = Command::new("docker-compose")
@@ -358,9 +358,48 @@ pub fn list() {
 }
 // <-----------------------------------------------
 
-fn check_args_for_stack(args: Vec<String>) -> PathBuf {
+// ----------------------------------------------->
+// add
+pub fn add(args: Vec<String>) {
+    // 至少需要三个参数
+    if args.len() < 3 {
+        println!("add至少需要三个参数，hdd add stack -dn 2 ");
+        process::exit(1);
+    }
+    // 校验参数
+    let stack = check_args_for_stack(&args);
+    let stack_file_path = stack.join("docker-compose.yml");
+    let mut compose = String::new();
+    File::open(stack_file_path).unwrap().read_to_string(&mut compose).unwrap();
+    // 字符串转struct
+    let server: Server = serde_yaml::from_str(&compose).unwrap();
+    // 获取需要操作的组件
+    let node = format_node(&args[1]);
+    // 判断需要add哪个组件
+    let mut count = 0;
+    for key in server.services.keys() {
+        if key.contains(&node) {
+            count += 1;
+        }
+    }
+
+}
+
+fn format_node(name: &String) -> String {
+    match name.trim() {
+        "-dn" => String::from("datanode"),
+        "-nm" => String::from("nodemanager"),
+        _ => {
+            println!("当前版本只允许对datanode、nodemanager进行扩缩容操作");
+            process::exit(1);
+        }
+    }
+}
+// <-----------------------------------------------
+
+fn check_args_for_stack(args: &Vec<String>) -> PathBuf {
     if args.is_empty() {
-        print_red("缺少stack参数，hdd start <stack_name>".to_string());
+        print_red("缺少stack参数，hdd command <stack_name>".to_string());
         process::exit(1);
     }
     if args.len() > 1 {
