@@ -108,5 +108,6 @@ Available Commands:
 ## 后续计划
 
 - [ ] 组件高可用
+- [ ] 组件动态扩缩容
 - [ ] 更细腻度的自定义，如镜像版本、组件端口
 - [ ] 支持更多的hadoop版本，至少覆盖hadoop2.x和hadoop3.x
