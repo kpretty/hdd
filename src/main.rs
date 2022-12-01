@@ -4,7 +4,7 @@ mod cmd;
 
 use std::env;
 use helper::*;
-use crate::cmd::{init, list, remove, start, status, stop};
+use crate::cmd::{add, init, list, remove, start, status, stop};
 
 fn main() {
     // 获取命令行参数
@@ -27,6 +27,7 @@ fn main() {
         "status" => status(args),
         "stop" => stop(args),
         "remove" | "rm" => remove(args),
+        "add" => add(args),
         "version" => println!("{} by {}", env!("CARGO_PKG_VERSION"), env!("CARGO_PKG_LICENSE")),
         "help" => {
             print_start();
